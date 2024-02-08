@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:dialog_flowtter/dialog_flowtter.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -10,6 +12,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final SpeechToText _speechToText = SpeechToText();
+  FlutterTts _flutterTts = FlutterTts();
+  late DialogFlowtter _dialogFlowtter;
 
   bool _speechEnabled = false;
   String _wordsSpoken = "";
@@ -18,12 +22,34 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    initDialogFlow(); //Creo una instancia
     initSpeech();
   }
 
+  //Inicializo el dialogFlow
+  /*void _initDialogFlow() async {
+    DialogAuthCredentials credentials = await DialogAuthCredentials.fromFile(
+        'assets/dialog_flow_auth.json'); //cargar las credenciales desde el archivo
+    DialogFlowtter dialogFlowtter = DialogFlowtter(
+        credentials: credentials); //esto es una instancia de dialogflowtter
+    setState(() {
+      //actualizar el estado de la clase
+      this.dialogFlowtter =
+          dialogFlowtter; //permitirá que esta instancia sea accesible desde otros métodos de la clase.
+    });
+  }*/
+
+/////////////////////
   void initSpeech() async {
     _speechEnabled = await _speechToText.initialize();
+    // Configurar la velocidad de la síntesis de voz
+    await _flutterTts.setSpeechRate(0.5);
+    // Obtener las voces disponibles
     setState(() {});
+  }
+
+  void initDialogFlow() async {
+    _dialogFlowtter = await DialogFlowtter.fromFile();
   }
 
   void _startListening() async {
@@ -38,76 +64,94 @@ class _HomePageState extends State<HomePage> {
     setState(() {});
   }
 
-  void _onSpeechResult(result) {
+  void _onSpeechResult(result) async {
+   //Actualiza el estado con las palabras reconocidas
     setState(() {
       _wordsSpoken = "${result.recognizedWords}";
       _confidenceLevel = result.confidence();
     });
+    _flutterTts.speak(_wordsSpoken);
+  }
+   void _speakText() {
+    _flutterTts.speak(_wordsSpoken);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.grey,
-        title: Text(
-          'App de Reconocimiento de Voz',
-          style: TextStyle(
-            color: Colors.white,
+    @override
+    Widget build(BuildContext context) {
+      return Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.grey,
+            title: Text(
+              'App de Reconocimiento de Voz',
+              style: TextStyle(
+                color: Colors.white,
+              ),
+            ),
           ),
-        ),
-      ),
-      body: Center(
-        child: Column(
-          children: [
-            Container(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                _speechToText.isListening
-                    ? "Listening..."
-                    : _speechEnabled
-                        ? "Presione el microfono"
-                        : "Speech not available",
-                style: TextStyle(fontSize: 20.0),
-              ),
-            ),
-            Expanded(
-              child: Container(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  _wordsSpoken,
-                  style: const TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.w300,
+          body: Center(
+            child: Column(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    _speechToText.isListening
+                        ? "Escuchando..."
+                        : _speechEnabled
+                            ? "Presiona el micrófono para hablar "
+                            : "Speech not available",
+                    style: TextStyle(fontSize: 20.0),
                   ),
                 ),
-              ),
-            ),
-          if (_speechToText.isNotListening && _confidenceLevel > 0)
-              Padding(
-                padding: const EdgeInsets.only(
-                  bottom: 100,
-                ),
-                child: Text(
-                  "Confidence: ${(_confidenceLevel * 100).toStringAsFixed(1)}%",
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w200,
+                Expanded(
+                  child: Container(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      _wordsSpoken,
+                      style: const TextStyle(
+                        fontSize: 25,
+                        fontWeight: FontWeight.w300,
+                      ),
+                    ),
                   ),
                 ),
-              )
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _speechToText.isListening ? _stopListening : _startListening,
-        tooltip: 'Listen',
-        child: Icon(
-          _speechToText.isNotListening ? Icons.mic_off : Icons.mic,
-          color: Colors.white,
-        ),
-        backgroundColor: Colors.red,
-      ),
-    );
+                if (_speechToText.isNotListening && _confidenceLevel > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      bottom: 100,
+                    ),
+                    child: Text(
+                      "Confidence: ${(_confidenceLevel * 100).toStringAsFixed(1)}%",
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w200,
+                      ),
+                    ),
+                  )
+              ],
+            ),
+          ),
+          floatingActionButton: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              FloatingActionButton(
+                onPressed: _startListening,
+                child: const Icon(
+                  Icons.mic,
+                  color: Colors.white,
+                ),
+                backgroundColor: Colors.red,
+              ),
+              SizedBox(width: 16),
+              FloatingActionButton(
+                onPressed: _speakText,
+                child: const Icon(
+                  Icons.volume_up,
+                  color: Colors.white,
+                ),
+                backgroundColor: Colors.blue,
+              ),
+            ],
+          ));
+    }
   }
-}
+
